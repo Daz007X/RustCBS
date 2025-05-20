@@ -1,19 +1,28 @@
 use corebank::models::{ResponseModel};
 use corebank::utility::cbs;
+use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
 
-
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
-
-#[get("/get_sample_core")]
-async fn hello() -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
+#[get("/file")]
+async fn read_file() -> impl Responder {
+    match cbs::get_data_file().await {
+        Ok(contents) => {
+            match ResponseModel::to_model(contents) {
+                Ok(response_msg) => HttpResponse::Ok().json(response_msg), // ส่ง ResponseModel เป็น JSON
+                Err(e) => HttpResponse::BadRequest().body(format!("Error parsing contents: {}", e)),
+            }
+            },
+        Err(e) => HttpResponse::InternalServerError().body(format!("Error reading file: {}", e)),
+    }
 }
 
 #[post("/tranform")]
-async fn echo(req_body: String) -> impl Responder {
-
-    
-    HttpResponse::Ok().body(req_body)
+async fn tranform_msg(req_body: String) -> impl Responder {
+    println!("RSBODY : {}",req_body);
+    match ResponseModel::to_model(req_body) 
+    {
+        Ok(response_msg) => HttpResponse::Ok().json(response_msg), // ส่ง ResponseModel เป็น JSON
+        Err(e) => HttpResponse::BadRequest().body(format!("Error parsing contents: {}", e)),
+    }
 }
 
 
@@ -24,7 +33,8 @@ async fn echo(req_body: String) -> impl Responder {
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
-            .service(hello) // route /
+            .service(read_file)
+            .service(tranform_msg)
     })
     .bind(("127.0.0.1", 8080))?
     .run()
